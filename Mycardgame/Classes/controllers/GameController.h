@@ -27,7 +27,8 @@ namespace MyCardGame {
         std::vector<CardModel*> _stackCardModels;
         CardModel* _currentPileCardModel;
 
-        std::vector<CardView*> _playfieldCardViews;
+        // 多个桌面堆，每个堆是一个vector<CardView*>
+        std::vector<std::vector<CardView*>> _playfieldPiles;
         std::vector<CardView*> _stackCardViews;
         CardView* _currentPileCardView;
 
