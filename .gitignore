@@ -366,3 +366,18 @@ FodyWeavers.xsd
 /Mycardgame/cocos2d/build
 .vscode/*
 requst.md
+
+# CMake 生成文件
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+*.vcxproj.filters
+
+# IDE 配置
+.vscode/
+*.sln.user
+*.vcxproj.user
+
+# 其他临时文件
+*.tmp
+*.bak
