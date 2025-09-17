@@ -364,4 +364,5 @@ FodyWeavers.xsd
 /Mycardgame/build
 /Mycardgame/.vscode/*
 /Mycardgame/cocos2d/build
-request.md
+.vscode/*
+requst.md
