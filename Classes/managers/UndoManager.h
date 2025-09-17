@@ -15,7 +15,7 @@ namespace MyCardGame {
      */
     class UndoCommand {
     public:
-        // The function that will be called to undo the action.
+        /** @brief The function that will be called to undo the action. */
         std::function<void()> undo;
     };
 
@@ -48,7 +48,7 @@ namespace MyCardGame {
         void clear();
 
     private:
-        std::vector<UndoCommand> _actions;
+        std::vector<UndoCommand> _actions; ///< The stack of undoable commands.
     };
 
 }

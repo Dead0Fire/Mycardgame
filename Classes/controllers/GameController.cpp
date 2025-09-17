@@ -47,19 +47,42 @@ bool GameController::init(Layer* mainCardArea, Layer* pileArea) {
 void GameController::startGame(int levelId) {
     auto levelConfig = LevelLoader::loadLevelConfig("level.json");
 
-    // Clean up previous game state
+    cleanupPreviousState();
+
+    auto allViews = setupPlayfieldCards(*levelConfig);
+    groupOverlappingCards(allViews);
+
+    // Add touch listeners to each card in the piles
+    for (auto& pile : _playfieldPiles) {
+        for (auto* card : pile) {
+            _eventDispatcher->addEventListenerWithSceneGraphPriority(_touchListener->clone(), card);
+        }
+    }
+
+    setupStackCards(*levelConfig);
+    setInitialPileCard();
+}
+
+void GameController::cleanupPreviousState() {
+    // Clean up models
     for (auto card : _playfieldCardModels) delete card;
     _playfieldCardModels.clear();
     for (auto card : _stackCardModels) delete card;
     _stackCardModels.clear();
+
+    // Clean up views
     _mainCardArea->removeAllChildren();
     _pileArea->removeAllChildren();
-    int cardId = 0;
-
-    // 自动分堆：每个堆是重叠的牌
     _playfieldPiles.clear();
-    const float overlapThreshold = 0.0f; // 重叠面积大于0即算同堆
+    _stackCardViews.clear();
+
+    _currentPileCardModel = nullptr;
+    _currentPileCardView = nullptr;
+}
+
+std::vector<CardView*> GameController::setupPlayfieldCards(const LevelConfig& levelConfig) {
     std::vector<CardView*> allViews;
+    int cardId = 0;
     for (const auto& cardConfig : levelConfig.playfieldCards) {
         auto model = new CardModel(cardId++, cardConfig.suit, cardConfig.face);
         _playfieldCardModels.push_back(model);
@@ -68,21 +91,18 @@ void GameController::startGame(int levelId) {
         _mainCardArea->addChild(view);
         allViews.push_back(view);
     }
-    // 分堆算法：遍历所有牌，按重叠分组
+    return allViews;
+}
+
+void GameController::groupOverlappingCards(const std::vector<CardView*>& allViews) {
     for (auto* card : allViews) {
         cocos2d::Rect rectA = card->getBoundingBox();
         bool added = false;
         for (auto& pile : _playfieldPiles) {
             for (auto* other : pile) {
                 cocos2d::Rect rectB = other->getBoundingBox();
-                // 计算交集面积
-                float x1 = std::max(rectA.getMinX(), rectB.getMinX());
-                float y1 = std::max(rectA.getMinY(), rectB.getMinY());
-                float x2 = std::min(rectA.getMaxX(), rectB.getMaxX());
-                float y2 = std::min(rectA.getMaxY(), rectB.getMaxY());
-                float interArea = (x2 > x1 && y2 > y1) ? (x2 - x1) * (y2 - y1) : 0;
-                float minArea = std::min(rectA.size.width * rectA.size.height, rectB.size.width * rectB.size.height);
-                if (minArea > 0 && interArea > 0) {
+                // Check for intersection
+                if (rectA.intersectsRect(rectB)) {
                     pile.push_back(card);
                     added = true;
                     break;
@@ -94,145 +114,180 @@ void GameController::startGame(int levelId) {
             _playfieldPiles.push_back({card});
         }
     }
-    // 给每个堆的牌添加点击事件
-    for (auto& pile : _playfieldPiles) {
-        for (auto* card : pile) {
-            _eventDispatcher->addEventListenerWithSceneGraphPriority(_touchListener->clone(), card);
-        }
-    }
+}
 
-    // Create stack cards (备用牌堆)
-    float stackX = 200;  // 起始位置进一步向右移
+void GameController::setupStackCards(const LevelConfig& levelConfig) {
+    float stackX = 200;
     float stackY = _pileArea->getContentSize().height * 0.5f;
-    
+    float offsetX = 70.0f;
+    int cardId = _playfieldCardModels.size();
 
-    // 堆叠显示所有备用牌，坐标依次相差一点
-    float offsetX = 70.0f; // 每张牌向右偏移80像素，明显错开
-    float offsetY = 0.0f;  // y坐标不变
-    float offsetScale = 0.0f; // 不缩放，保持一致
-    
     for (size_t i = 0; i < levelConfig.stackCards.size(); ++i) {
         const auto& cardConfig = levelConfig.stackCards[i];
         auto model = new CardModel(cardId++, cardConfig.suit, cardConfig.face);
         _stackCardModels.push_back(model);
-        
+
         auto view = CardView::create(model);
-        // 坐标依次相差一点，制造堆叠效果
-        view->setPosition(Vec2(stackX + i * offsetX, stackY + i * offsetY));
-        view->setLocalZOrder(i); // 确保后面的牌显示在上层
-        view->setOpacity(255); // 完全不透明
-        view->setVisible(true); // 所有牌都显示
+        view->setPosition(Vec2(stackX + i * offsetX, stackY));
+        view->setLocalZOrder(i);
         _pileArea->addChild(view);
         _stackCardViews.push_back(view);
-        
-        // 添加点击事件监听
+
         _eventDispatcher->addEventListenerWithSceneGraphPriority(_touchListener->clone(), view);
     }
+}
 
-    // Set initial pile card
+void GameController::setInitialPileCard() {
     if (!_stackCardModels.empty()) {
+        // 从备用牌堆中取出最后一张牌作为手牌
         _currentPileCardModel = _stackCardModels.back();
         _currentPileCardView = _stackCardViews.back();
+        
+        // 从备用牌堆中移除这张牌
+        _stackCardModels.pop_back();
+        _stackCardViews.pop_back();
+        
+        // 设置手牌的位置和显示
         _currentPileCardView->setVisible(true);
         _currentPileCardView->setPosition(Vec2(_pileArea->getContentSize().width / 2 + 80, _pileArea->getContentSize().height / 2));
+        _currentPileCardView->setLocalZOrder(1000); // Ensure it's on top
     }
 }
 
 void GameController::onCardClicked(CardView* card) {
-    CardModel* cardModel = card->getModel();
-    if (!cardModel) return;
+    if (!card->getModel()) return;
 
-    // 只允许每个堆的顶部牌与手牌区顶部牌进行匹配
+    // Check if the clicked card is a top card of a playfield pile
     for (auto& pile : _playfieldPiles) {
         if (!pile.empty() && card == pile.back()) {
-            if (_currentPileCardModel && canMatch(cardModel, _currentPileCardModel)) {
-                // Capture state for undo
-                auto oldPileModel = _currentPileCardModel;
-                auto oldPileView = _currentPileCardView;
-                auto fromPosition = card->getPosition();
-                auto fromParent = card->getParent();
-
-                UndoCommand command;
-                command.undo = [this, card, oldPileModel, oldPileView, fromPosition, fromParent, &pile]() {
-                    // Restore the previous pile card
-                    if (oldPileView) {
-                        oldPileView->setVisible(true);
-                    }
-                    _currentPileCardModel = oldPileModel;
-                    _currentPileCardView = oldPileView;
-
-                    // Move the card back to其原堆
-                    card->retain();
-                    card->removeFromParent();
-                    fromParent->addChild(card);
-                    card->release();
-                    auto moveTo = MoveTo::create(0.2f, fromPosition);
-                    card->runAction(moveTo);
-                    pile.push_back(card);
-                };
-                _undoManager.addAction(std::move(command));
-
-                Vec2 targetPos = _currentPileCardView->getPosition();
-                moveCard(card, targetPos, [this, card, cardModel, &pile]() {
-                    if (_currentPileCardView) {
-                        _currentPileCardView->setVisible(false); 
-                    }
-                    _currentPileCardModel = cardModel;
-                    _currentPileCardView = card;
-                    // 只移除该堆顶部牌
-                    if (!pile.empty()) {
-                        pile.pop_back();
-                    }
-                    card->retain();
-                    card->removeFromParent();
-                    _pileArea->addChild(card);
-                    card->release();
-                });
-            }
+            handlePlayfieldCardClick(card);
             return;
         }
     }
 
-    // Check if it's a card from the stack pile being clicked
+    // Check if the clicked card is from the stack
     auto it_stack = std::find(_stackCardViews.begin(), _stackCardViews.end(), card);
-    if (it_stack != _stackCardViews.end() && card != _currentPileCardView) {
-        // Capture state for undo
-        auto oldPileModel = _currentPileCardModel;
-        auto oldPileView = _currentPileCardView;
-        auto fromPosition = card->getPosition();
-        auto fromScale = card->getScale();
-        auto fromZOrder = card->getLocalZOrder();
-
-        UndoCommand command;
-        command.undo = [this, card, oldPileModel, oldPileView, fromPosition, fromScale, fromZOrder]() {
-            // Restore the previous pile card
-            if (oldPileView) {
-                oldPileView->setVisible(true);
-            }
-            _currentPileCardModel = oldPileModel;
-            _currentPileCardView = oldPileView;
-
-            // Move the card back to its original state in the stack
-            auto moveTo = MoveTo::create(0.2f, fromPosition);
-            auto scaleTo = ScaleTo::create(0.2f, fromScale);
-            card->runAction(Spawn::create(moveTo, scaleTo, nullptr));
-            card->setLocalZOrder(fromZOrder);
-        };
-        _undoManager.addAction(std::move(command));
-
-        Vec2 targetPos = Vec2(_pileArea->getContentSize().width / 2 + 80, _pileArea->getContentSize().height / 2);
-
-        moveCard(card, targetPos, [this, card, cardModel]() {
-            if (_currentPileCardView) {
-                _currentPileCardView->setVisible(false);
-            }
-            
-            _currentPileCardModel = cardModel;
-            _currentPileCardView = card;
-            card->setLocalZOrder(1000);
-        });
+    if (it_stack != _stackCardViews.end()) {
+        // 检查是否是备用牌堆的顶部牌
+        size_t clickedIndex = std::distance(_stackCardViews.begin(), it_stack);
+        if (clickedIndex == _stackCardViews.size() - 1) {  // 是备用牌堆的顶部牌
+            handleStackCardClick(card);
+        }
     }
 }
+
+void GameController::handlePlayfieldCardClick(CardView* card) {
+    CardModel* cardModel = const_cast<CardModel*>(card->getModel());
+    if (!_currentPileCardModel || !canMatch(cardModel, _currentPileCardModel)) {
+        return;
+    }
+
+    // Find the pile this card belongs to
+    auto pile_it = std::find_if(_playfieldPiles.begin(), _playfieldPiles.end(), 
+        [card](const std::vector<CardView*>& p) {
+            return !p.empty() && p.back() == card;
+    });
+    if (pile_it == _playfieldPiles.end()) return;
+
+    // Capture state for undo
+    auto oldPileModel = _currentPileCardModel;
+    auto oldPileView = _currentPileCardView;
+    auto fromPosition = card->getPosition();
+    auto fromParent = card->getParent();
+
+    UndoCommand command;
+    command.undo = [this, card, oldPileModel, oldPileView, fromPosition, fromParent, pile_it]() {
+        // 先设置手牌状态
+        if (oldPileView) {
+            oldPileView->setVisible(true);
+        }
+        _currentPileCardModel = oldPileModel;
+        _currentPileCardView = oldPileView;
+
+        // 使用动画将牌移回原位
+        card->retain();
+        card->removeFromParent();
+        fromParent->addChild(card);
+        card->release();
+
+        moveCard(card, fromPosition, [this, card, pile_it]() {
+            pile_it->push_back(card);  // 移动完成后将牌放回原来的牌堆
+        });
+    };
+    _undoManager.addAction(std::move(command));
+
+    // Execute move
+    Vec2 targetPos = _currentPileCardView->getPosition();
+    moveCard(card, targetPos, [this, card, cardModel, pile_it]() {
+        if (_currentPileCardView) {
+            _currentPileCardView->setVisible(false);
+        }
+        _currentPileCardModel = cardModel;
+        _currentPileCardView = card;
+        
+        pile_it->pop_back();
+
+        card->retain();
+        card->removeFromParent();
+        _pileArea->addChild(card);
+        card->release();
+        card->setLocalZOrder(1000);
+    });
+}
+
+void GameController::handleStackCardClick(CardView* card) {
+    CardModel* cardModel = const_cast<CardModel*>(card->getModel());
+
+    // 保存当前状态用于撤销
+    auto oldPileModel = _currentPileCardModel;
+    auto oldPileView = _currentPileCardView;
+    auto fromPosition = card->getPosition();
+    auto fromZOrder = card->getLocalZOrder();
+
+    // 找到点击的牌在备用牌堆中的位置
+    auto it_model = std::find(_stackCardModels.begin(), _stackCardModels.end(), cardModel);
+    auto it_view = std::find(_stackCardViews.begin(), _stackCardViews.end(), card);
+
+    UndoCommand command;
+    command.undo = [this, card, oldPileModel, oldPileView, fromPosition, fromZOrder, cardModel]() {
+        // 先设置手牌状态
+        if (oldPileView) {
+            oldPileView->setVisible(true);
+        }
+        _currentPileCardModel = oldPileModel;
+        _currentPileCardView = oldPileView;
+
+        // 将牌放回备用牌堆
+        _stackCardModels.push_back(cardModel);
+        _stackCardViews.push_back(card);
+
+        // 使用动画将牌移回原位
+        moveCard(card, fromPosition, [this, card, fromZOrder]() {
+            card->setLocalZOrder(fromZOrder);  // 移动完成后恢复原来的层级
+        });
+    };
+    _undoManager.addAction(std::move(command));
+
+    // 从备用牌堆中移除这张牌
+    if (it_model != _stackCardModels.end()) {
+        _stackCardModels.erase(it_model);
+    }
+    if (it_view != _stackCardViews.end()) {
+        _stackCardViews.erase(it_view);
+    }
+
+    // Execute move
+    Vec2 targetPos = Vec2(_pileArea->getContentSize().width / 2 + 80, _pileArea->getContentSize().height / 2);
+    moveCard(card, targetPos, [this, card, cardModel]() {
+        if (_currentPileCardView) {
+            _currentPileCardView->setVisible(false);
+        }
+        _currentPileCardModel = cardModel;
+        _currentPileCardView = card;
+        card->setLocalZOrder(1000);
+    });
+}
+
 
 void GameController::undoLastMove() {
     _undoManager.undo();

@@ -46,10 +46,11 @@ if(APPLE OR WINDOWS)
     cocos_mark_multi_resources(common_res_files RES_TO "Resources" FOLDERS ${GAME_RES_FOLDER})
 endif()
 
-# add cross-platforms source files and header files 
+# add cross-platforms source files and header files
 # 使用文件通配符递归查找所有源文件
-file(GLOB_RECURSE GAME_SOURCE 
+file(GLOB_RECURSE GAME_SOURCE
      "Classes/*.cpp"
+     "Classes/utils/*.cpp"
 )
 
 # 使用文件通配符递归查找所有头文件

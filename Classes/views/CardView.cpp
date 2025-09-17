@@ -5,7 +5,7 @@
 #include "math/Vec2.h"
 using namespace MyCardGame;
 
-CardView* CardView::create(CardModel* model) {
+CardView* CardView::create(const CardModel* model) {
     CardView* sprite = new (std::nothrow) CardView();
     if (sprite && sprite->init(model)) {
         sprite->autorelease();
@@ -15,7 +15,7 @@ CardView* CardView::create(CardModel* model) {
     return nullptr;
 }
 
-bool CardView::init(CardModel* model) {
+bool CardView::init(const CardModel* model) {
     if (!cocos2d::Sprite::initWithFile("res/card_general.png")) {
         return false;
     }
@@ -28,23 +28,23 @@ bool CardView::init(CardModel* model) {
 void CardView::setupCardDisplay() {
     cocos2d::Size cardSize = this->getContentSize();
 
-    // 左上角小数字
+    // Top-left small number
     _topLeftSprite = cocos2d::Sprite::create(getSmallNumberImagePath());
     if (_topLeftSprite) {
         _topLeftSprite->setPosition(cocos2d::Vec2(cardSize.width * 0.15f, cardSize.height * 0.85f));
-        _topLeftSprite->setScale(0.8f); // 稍微缩小
+        _topLeftSprite->setScale(0.8f);
         this->addChild(_topLeftSprite);
     }
 
-    // 右上角花色
+    // Top-right suit
     _topRightSprite = cocos2d::Sprite::create(getSuitImagePath());
     if (_topRightSprite) {
         _topRightSprite->setPosition(cocos2d::Vec2(cardSize.width * 0.85f, cardSize.height * 0.85f));
-        _topRightSprite->setScale(0.6f); // 稍微缩小
+        _topRightSprite->setScale(0.6f);
         this->addChild(_topRightSprite);
     }
 
-    // 中间大数字
+    // Center large number
     _centerSprite = cocos2d::Sprite::create(getBigNumberImagePath());
     if (_centerSprite) {
         _centerSprite->setPosition(cocos2d::Vec2(cardSize.width * 0.5f, cardSize.height * 0.5f));
@@ -88,5 +88,5 @@ std::string CardView::getNumberString() const {
 }
 
 int CardView::getCardId() const {
-    return _model->getId();
+    return _model ? _model->getId() : -1;
 }
