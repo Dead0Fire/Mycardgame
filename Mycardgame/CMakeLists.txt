@@ -47,14 +47,15 @@ if(APPLE OR WINDOWS)
 endif()
 
 # add cross-platforms source files and header files 
-list(APPEND GAME_SOURCE
-     Classes/AppDelegate.cpp
-     Classes/GameScene.cpp
-     )
-list(APPEND GAME_HEADER
-     Classes/AppDelegate.h
-     Classes/GameScene.h
-     )
+# 使用文件通配符递归查找所有源文件
+file(GLOB_RECURSE GAME_SOURCE 
+     "Classes/*.cpp"
+)
+
+# 使用文件通配符递归查找所有头文件
+file(GLOB_RECURSE GAME_HEADER
+     "Classes/*.h"
+)
 
 if(ANDROID)
     # change APP_NAME to the share library name for Android, it's value depend on AndroidManifest.xml

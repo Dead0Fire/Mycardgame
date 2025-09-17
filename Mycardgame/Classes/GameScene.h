@@ -1,6 +1,7 @@
 #pragma once
 
 #include "cocos2d.h"
+#include "controllers/GameController.h"
 
 class GameScene : public cocos2d::Scene {
 public:
@@ -11,4 +12,5 @@ public:
 private:
     cocos2d::LayerColor* _mainCardArea; // LayerColor，以支持背景颜色
     cocos2d::LayerColor* _pileArea; 
+    MyCardGame::GameController* _gameController;
 };
