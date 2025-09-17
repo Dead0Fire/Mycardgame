@@ -6,8 +6,8 @@
 #include "views/CardView.h"
 #include "managers/UndoManager.h"
 #include "configs/models/LevelConfig.h"
+#include "services/SaveGameService.h"
 #include <vector>
-#include <functional>
 #include <functional>
 
 namespace MyCardGame {
@@ -51,6 +51,24 @@ public:
      * @brief Undoes the last move made by the player.
      */
     void undoLastMove();
+
+    /**
+     * @brief 保存当前游戏状态
+     * @return 是否保存成功
+     */
+    bool saveGameState();
+
+    /**
+     * @brief 加载游戏存档
+     * @return 是否加载成功
+     */
+    bool loadGameState();
+
+    /**
+     * @brief 检查是否有可用的存档
+     * @return 是否存在存档
+     */
+    bool hasSaveGame() const;
 
 private:
     /**
@@ -132,6 +150,15 @@ private:
     UndoManager _undoManager;                     ///< Manages the undo history and operations.
 
     cocos2d::EventListenerTouchOneByOne* _touchListener; ///< Listener for touch events on cards.
+
+    // 新增存档相关的私有方法
+    int getCurrentScore() const;
+    int getUndoSteps() const;
+    void setGameState(int levelId, const std::vector<CardModel>& cards, int score, int undoSteps);
+
+    // 新增成员变量
+    int _currentLevelId{0};  ///< 当前关卡ID
+    int _currentScore{0};    ///< 当前得分
 };}
 
 #endif // GAME_CONTROLLER_H
