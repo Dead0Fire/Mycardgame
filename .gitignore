@@ -359,7 +359,14 @@ FodyWeavers.xsd
 /Mycardgame/build
 /Mycardgame/.vscode/*
 /Mycardgame/cocos2d/build
-requst.md
+
+build
+.vscode/*
+cocos2d/build
+cocos2d/docs
+cocos2d/licenses
+cocos2d/tools
+
 
 # CMake 生成文件
 CMakeFiles/
