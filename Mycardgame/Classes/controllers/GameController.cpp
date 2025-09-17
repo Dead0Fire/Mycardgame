@@ -102,18 +102,14 @@ void GameController::startGame(int levelId) {
     }
 
     // Create stack cards (备用牌堆)
-    float stackX = 100;  // 固定位置
+    float stackX = 200;  // 起始位置进一步向右移
     float stackY = _pileArea->getContentSize().height * 0.5f;
     
-    // 创建一个背景框来标识备用牌堆位置
-    auto stackBackground = LayerColor::create(Color4B(50, 50, 50, 100), 100, 150);
-    stackBackground->setPosition(Vec2(stackX - 50, stackY - 75));
-    _pileArea->addChild(stackBackground);
 
     // 堆叠显示所有备用牌，坐标依次相差一点
-    float offsetX = 1.0f; // 每张牌向右偏移1像素
-    float offsetY = 3.0f; // 每张牌向上偏移3像素
-    float offsetScale = 0.01f; // 每张牌略微增大，制造视觉深度
+    float offsetX = 70.0f; // 每张牌向右偏移80像素，明显错开
+    float offsetY = 0.0f;  // y坐标不变
+    float offsetScale = 0.0f; // 不缩放，保持一致
     
     for (size_t i = 0; i < levelConfig.stackCards.size(); ++i) {
         const auto& cardConfig = levelConfig.stackCards[i];
@@ -123,7 +119,6 @@ void GameController::startGame(int levelId) {
         auto view = CardView::create(model);
         // 坐标依次相差一点，制造堆叠效果
         view->setPosition(Vec2(stackX + i * offsetX, stackY + i * offsetY));
-        view->setScale(1.0f + i * offsetScale); // 后面的牌略大，制造远近感
         view->setLocalZOrder(i); // 确保后面的牌显示在上层
         view->setOpacity(255); // 完全不透明
         view->setVisible(true); // 所有牌都显示
@@ -139,7 +134,7 @@ void GameController::startGame(int levelId) {
         _currentPileCardModel = _stackCardModels.back();
         _currentPileCardView = _stackCardViews.back();
         _currentPileCardView->setVisible(true);
-        _currentPileCardView->setPosition(Vec2(_pileArea->getContentSize().width / 2, _pileArea->getContentSize().height / 2));
+        _currentPileCardView->setPosition(Vec2(_pileArea->getContentSize().width / 2 + 80, _pileArea->getContentSize().height / 2));
     }
 }
 
@@ -224,9 +219,9 @@ void GameController::onCardClicked(CardView* card) {
             card->setLocalZOrder(fromZOrder);
         };
         _undoManager.addAction(std::move(command));
-        
-        Vec2 targetPos = Vec2(_pileArea->getContentSize().width / 2, _pileArea->getContentSize().height / 2);
-        
+
+        Vec2 targetPos = Vec2(_pileArea->getContentSize().width / 2 + 80, _pileArea->getContentSize().height / 2);
+
         moveCard(card, targetPos, [this, card, cardModel]() {
             if (_currentPileCardView) {
                 _currentPileCardView->setVisible(false);

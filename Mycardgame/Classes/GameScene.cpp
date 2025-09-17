@@ -34,10 +34,10 @@ bool GameScene::init() {
     _gameController->startGame(1); // Start level 1
 
     // Add an undo button at the center bottom of the pile area
-    auto undoButton = ui::Button::create("CloseNormal.png", "CloseSelected.png");
+    auto undoButton = ui::Button::create();
     undoButton->setPosition(Vec2(_pileArea->getContentSize().width * 0.8f, _pileArea->getContentSize().height * 0.5f));
     undoButton->setTitleText("Undo");
-    undoButton->setTitleFontSize(24);
+    undoButton->setTitleFontSize(40);
     undoButton->addClickEventListener([this](Ref* sender) {
         _gameController->undoLastMove();
     });

@@ -362,5 +362,6 @@ MigrationBackup/
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
 /Mycardgame/build
+/Mycardgame/.vscode/*
 /Mycardgame/cocos2d/build
 request.md
