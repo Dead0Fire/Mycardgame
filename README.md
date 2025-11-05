@@ -9,6 +9,8 @@
 
 Mycardgame 是一个基于 Cocos2d-x 引擎开发的卡牌游戏项目，支持 Windows 平台。项目采用 CMake 构建，包含完整的游戏逻辑、资源管理、关卡配置、存档功能等模块，结构清晰，易于扩展和维护。
 
+
+https://github.com/user-attachments/assets/4ad92a66-b8af-4909-b505-351fada64878
 ## 二、项目结构说明
 
 ```
